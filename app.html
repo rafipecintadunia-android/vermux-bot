@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VERMUX - Kayak inDrive</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+*{box-sizing:border-box;font-family:Arial} body{margin:0;background:#111;color:#fff}
+header{background:#FFD500;color:#000;padding:15px;text-align:center;font-weight:900;font-size:22px}
+#map{height:45vh;width:100%}
+.box{padding:15px} input,select,button{width:100%;padding:13px;margin:7px 0;border-radius:10px;border:none;font-size:16px}
+button{background:#FFD500;font-weight:900;cursor:pointer}
+.card{background:#222;padding:15px;border-radius:12px;margin:10px 0}
+.harga{font-size:28px;color:#FFD500;font-weight:900;text-align:center}
+.tab{display:flex} .tab button{flex:1;background:#333;color:#fff} .tab button.on{background:#FFD500;color:#000}
+</style>
+</head>
+<body>
+<header>🚗 VERMUX GRESIK</header>
+<div class="tab">
+<button id="btnCus" class="on" onclick="ganti('cus')">SAYA PENUMPANG</button>
+<button id="btnDrv" onclick="ganti('drv')">SAYA DRIVER</button>
+</div>
+<div id="map"></div>
+
+<div id="panelCus" class="box">
+<p>📍 Titik Jemput (Klik Map / GPS):</p>
+<input id="jemput" placeholder="Contoh: Menganti">
+<p>🎯 Tujuan:</p>
+<input id="tujuan" placeholder="Contoh: Gresik Kota">
+<p>💰 Tawar Harga Kamu:</p>
+<input id="tawar" type="number" placeholder="Contoh: 25000">
+<div class="card"><div>Estimasi Jarak: <b id="jarak">- km</b></div><div>Harga Wajar: <b id="wajar">Rp 0</b></div><div class="harga" id="tampilHarga">Rp 0</div></div>
+<button onclick="cariDriver()">🔥 CARI DRIVER SEKARANG</button>
+<button style="background:#25D366" onclick="kirimWA()">Chat WA Admin</button>
+<div id="statusCus"></div>
+</div>
+
+<div id="panelDrv" class="box" style="display:none">
+<h3>🛵 Mode Driver - ON</h3>
+<p>Nama Driver:</p><input id="namaDrv" placeholder="Nama Kamu">
+<p>Plat Motor / Mobil:</p><input id="platDrv" placeholder="W 1234 XX">
+<button onclick="driverOn()">✅ AKTIFKAN JADI DRIVER</button>
+<div id="listOrder"></div>
+</div>
+
+<script>
+let map = L.map('map').setView([-7.15, 112.65], 12);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+let m1, m2, jarakKm = 0;
+map.on('click', function(e){
+  if(!m1){ m1=L.marker(e.latlng).addTo(map).bindPopup("Jemput").openPopup(); document.getElementById('jemput').value = e.latlng.lat.toFixed(4)+","+e.latlng.lng.toFixed(4); }
+  else if(!m2){ m2=L.marker(e.latlng).addTo(map).bindPopup("Tujuan").openPopup();
+    jarakKm = map.distance(m1.getLatLng(), m2.getLatLng())/1000;
+    document.getElementById('jarak').innerText = jarakKm.toFixed(1)+" km";
+    let wajar = Math.round(jarakKm*3500+5000);
+    document.getElementById('wajar').innerText = "Rp "+wajar.toLocaleString('id-ID');
+    document.getElementById('tampilHarga').innerText = "Rp "+wajar.toLocaleString('id-ID');
+    document.getElementById('tawar').value = wajar;
+  } else { map.removeLayer(m1); map.removeLayer(m2); m1=null; m2=null; }
+});
+if(navigator.geolocation){ navigator.geolocation.getCurrentPosition(p=>{ map.setView([p.coords.latitude,p.coords.longitude],14); }); }
+function ganti(mode){
+  document.getElementById('panelCus').style.display = mode=='cus'?'block':'none';
+  document.getElementById('panelDrv').style.display = mode=='drv'?'block':'none';
+  document.getElementById('btnCus').className = mode=='cus'?'on':''; document.getElementById('btnDrv').className = mode=='drv'?'on':'';
+}
+function cariDriver(){
+  let j=document.getElementById('jemput').value, t=document.getElementById('tujuan').value, h=document.getElementById('tawar').value;
+  if(!j||!t||!h) return alert("Isi Jemput, Tujuan, Harga dulu!");
+  let order = {jemput:j, tujuan:t, harga:h, waktu:new Date().toLocaleTimeString('id-ID')};
+  let semua = JSON.parse(localStorage.getItem('vermux_orders')||'[]'); semua.push(order); localStorage.setItem('vermux_orders', JSON.stringify(semua));
+  document.getElementById('statusCus').innerHTML = `<div class="card">⏳ Mencari Driver...<br>Order: ${j} -> ${t}<br>Harga Tawaran: Rp ${parseInt(h).toLocaleString('id-ID')}<br>Driver di Gresik akan liat orderan kamu!</div>`;
+  alert("Order dikirim ke Driver!");
+}
+function driverOn(){
+  let nama=document.getElementById('namaDrv').value||'Driver';
+  let orders = JSON.parse(localStorage.getItem('vermux_orders')||'[]');
+  let html = `<h3>📦 Order Masuk (${orders.length})</h3>`;
+  if(orders.length==0) html += `<div class="card">Belum ada order. Tunggu penumpang order.</div>`;
+  orders.forEach((o,i)=>{ html+=`<div class="card"><b>${o.jemput} -> ${o.tujuan}</b><br>Harga: Rp ${parseInt(o.harga).toLocaleString('id-ID')}<br>Jam: ${o.waktu}<br><button onclick="ambil(${i})">AMBIL ORDER INI</button></div>` });
+  document.getElementById('listOrder').innerHTML = html;
+  alert("Halo "+nama+", Kamu Online! Cek order di bawah.");
+}
+function ambil(i){ alert("Order ke-"+(i+1)+" berhasil kamu ambil! Chat penumpang via WA!"); }
+function kirimWA(){ let j=document.getElementById('jemput').value, t=document.getElementById('tujuan').value, h=document.getElementById('tawar').value; window.open(`https://wa.me/6281234567890?text=Halo VERMUX! Order ${j} ke ${t} harga Rp ${h}`); }
+</script>
+</body>
+  </html>
