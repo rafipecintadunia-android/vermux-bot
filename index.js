@@ -1,50 +1,50 @@
-const http = require('http');
-http.createServer((req,res)=>{res.write("VERMUX BOT JALAN 24 JAM!");res.end();}).listen(process.env.PORT||3000);
-const TOKEN = process.env.BOT_TOKEN;
-const API = `https://api.telegram.org/bot${TOKEN}`;
-const ADMIN_ID = 9073018852;
-const WA_NUMBER = "6285736394243";
+const TOKEN = "9234284409:AAEvRLDvjNjuJjE8DW92DZkhx47la20XucU";
+const ADMIN_CHAT_ID = "6285736394243";
+const WA_ADMIN = "6285736394243";
+
+async function send(chatId, text, replyMarkup) {
+  const body = { chat_id: chatId, text: text, parse_mode: "HTML" };
+  if (replyMarkup) body.reply_markup = replyMarkup;
+  await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+}
+
+async function getUpdates(offset) {
+  const r = await fetch(`https://api.telegram.org/bot${TOKEN}/getUpdates?timeout=30&offset=${offset}`);
+  const d = await r.json();
+  return d.result || [];
+}
+
+console.log("VERMUX BOT 24 JAM JALAN!");
 let offset = 0;
-async function kirim(chat_id, pesan, tombolWA=false) {
-  let body = {chat_id, text: pesan};
-  if (tombolWA) {
-    body.reply_markup = {inline_keyboard: [[{text: "💬 Chat WhatsApp Admin", url: `https://wa.me/${WA_NUMBER}?text=Halo%20Admin%20Vermux%20Gresik,%20mau%20order!` }]]};
-  }
-  await fetch(`${API}/sendMessage`, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
-}
-async function jalan() {
-  console.log("VERMUX BOT 24 JAM JALAN!");
-  while (true) {
-    try {
-      const res = await fetch(`${API}/getUpdates?offset=${offset}&timeout=30`);
-      const data = await res.json();
-      for (const u of data.result || []) {
-        offset = u.update_id + 1;
-        const msg = u.message;
-        if (!msg || !msg.text) continue;
-        const chat_id = msg.chat.id;
-        const teks = msg.text;
-        const lower = teks.toLowerCase();
-        if (lower === "/start") {
-          await kirim(chat_id, "Selamat datang di VERMUX GRESIK! 🛵\n\nMenu:\n/order - Cara Order\n/harga - Daftar Harga\n/wa - Chat WhatsApp\n/help - Bantuan\n\nKetik /order buat order!", true);
-        } else if (lower === "/order") {
-          await kirim(chat_id, "CARA ORDER VERMUX:\n\nKirim format gini:\nNAMA - JEMPUT - TUJUAN\n\nContoh:\nBudi - Gresik Kota - Menganti\n\nNanti langsung diteruskan ke Admin!");
-        } else if (lower === "/harga") {
-          await kirim(chat_id, "HARGA VERMUX GRESIK:\n\nDalam Kota Gresik: 10k-15k\nGresik - Menganti: 20k\nGresik - Driyorejo: 25k\nGresik - Cerme: 20k\n\nKetik /order buat order!", true);
-        } else if (lower === "/wa") {
-          await kirim(chat_id, "Chat Admin via WhatsApp langsung klik tombol di bawah!", true);
-        } else if (lower === "/help") {
-          await kirim(chat_id, "Ketik /start buat menu, /order buat order, /harga buat harga, /wa buat WhatsApp!");
-        } else if (teks.includes("-")) {
-          await kirim(chat_id, `✅ ORDER DITERIMA!\n\n${teks}\n\nAdmin Vermux Gresik segera hubungi kamu!`, true);
-          if (chat_id != ADMIN_ID) {
-            await kirim(ADMIN_ID, `🔥 ORDER BARU VERMUX!\n\nDari: ${msg.from.first_name} (@${msg.from.username || "-"})\nChat ID: ${chat_id}\n\nIsi Order:\n${teks}\n\nSegera hubungi customer!`);
-          }
-        } else {
-          await kirim(chat_id, `Pesan kamu: "${teks}" udah diterima! Ketik /order buat order, /wa buat WhatsApp.`);
-        }
+while (true) {
+  try {
+    const updates = await getUpdates(offset);
+    for (const u of updates) {
+      offset = u.update_id + 1;
+      const msg = u.message;
+      if (!msg || !msg.text) continue;
+      const chatId = msg.chat.id;
+      const text = msg.text.trim();
+      const nama = msg.from.first_name || "Kak";
+
+      if (text === "/start") {
+        await send(chatId, `Halo ${nama}! 👋\n\nSelamat datang di <b>VERMUX GRESIK</b> 🚗\n\nJasa Antar Jemput Area Gresik!\n\nKetik:\n/order - Cara Order\n/harga - Cek Harga\n/wa - Chat Admin WA`);
+      } else if (text === "/order") {
+        await send(chatId, `<b>CARA ORDER:</b>\n\nKirim format gini:\n\nNAMA - JEMPUT - TUJUAN\n\nContoh:\nRafi - Menganti - Gresik Kota\n\nNanti langsung diteruskan ke Admin!`);
+      } else if (text === "/harga") {
+        await send(chatId, `<b>HARGA VERMUX GRESIK:</b>\n\n- Menganti: 20k\n- Driyorejo: 25k\n- Gresik Kota: 30k\n- Kebomas: 25k\n\nHarga bisa nego, chat admin aja!`);
+      } else if (text === "/wa") {
+        await send(chatId, `Chat Admin langsung di WA ya!`, { inline_keyboard: [[{ text: "💬 Chat WA Admin", url: `https://wa.me/${WA_ADMIN}` }]] });
+      } else if (text.includes(" - ")) {
+        await send(chatId, `✅ Order kamu diteruskan ke Admin!\n\nTunggu ya, Admin akan chat kamu sebentar lagi! 🙏`);
+        await send(ADMIN_CHAT_ID, `🔥 <b>ORDER BARU!</b>\n\nDari: ${nama}\nUsername: @${msg.from.username || "-"}\nIsi: ${text}`);
+      } else {
+        await send(chatId, `Halo ${nama}! Ketik /start buat liat menu ya!`);
       }
-    } catch (e) { console.log("Error...", e.message); }
-  }
+    }
+  } catch (e) { console.log("Error:", e.message); await new Promise(r => setTimeout(r, 3000)); }
 }
-jalan();
