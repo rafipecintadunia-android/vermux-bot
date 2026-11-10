@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VERMUX V3 - DRIVER</title>
+<style>
+body{font-family:sans-serif;background:#0f0f0f;color:#fff;margin:0;padding-bottom:80px}
+header{background:#FFD500;color:#000;padding:14px;text-align:center;font-weight:900;font-size:18px;position:sticky;top:0;z-index:10}
+.card{background:#222;margin:10px;padding:14px;border-radius:14px}
+input,select{width:100%;padding:13px;border-radius:10px;border:0;margin-top:8px;box-sizing:border-box;font-size:15px}
+button{width:100%;padding:14px;border:0;border-radius:10px;font-weight:900;margin-top:10px;font-size:15px}
+.order{background:#fff;color:#000;margin:10px;padding:14px;border-radius:14px;border-left:6px solid #00c853}
+.price{font-size:26px;font-weight:900;color:#00a651}
+.badge{background:#FFD500;padding:4px 8px;border-radius:20px;font-size:12px;font-weight:900}
+.topbar{display:flex;justify-content:space-between;align-items:center}
+.switch{display:flex;gap:8px;margin-top:10px}
+.switch button{flex:1;padding:10px}
+.on{background:#00e676}.off{background:#444;color:#fff}
+</style></head><body>
+<header>🚗 VERMUX V3 - DRIVER</header>
+
+<div id="login" class="card">
+<h3>🔐 Login Driver</h3>
+<input id="hp" placeholder="Nomor HP: 0812xxxx">
+<button style="background:#FFD500" onclick="alert('OTP: 123456')">KIRIM OTP</button>
+<input id="otp" placeholder="OTP: 123456">
+<button style="background:#fff" onclick="login()">MASUK JADI DRIVER</button>
+</div>
+
+<div id="app" style="display:none">
+<div class="card">
+<div class="topbar"><b>👤 <span id="userHp"></span></b><span id="statusTxt" class="badge">OFFLINE</span></div>
+<div class="switch">
+<button id="btnOn" class="off" onclick="setOnline(true)">🟢 ONLINE</button>
+<button id="btnOff" class="off" onclick="setOnline(false)">🔴 OFFLINE</button>
+</div>
+<p style="font-size:13px;margin:8px 0 0">Filter: Cuma order >= Rp <b id="minTxt">15000</b> yang bunyi</p>
+<input type="range" id="minHarga" min="10000" max="50000" step="5000" value="15000" oninput="document.getElementById('minTxt').innerText=this.value">
+<p>Saldo Hari Ini: <b id="saldo">Rp 0</b> | Order: <b id="jml">0</b></p>
+<button style="background:#ff4444;color:#fff;padding:8px" onclick="logout()">LOGOUT</button>
+</div>
+
+<div class="card">
+<h3>➕ Simulasi Order Masuk (Tes)</h3>
+<input id="jemput" placeholder="Jemput: Menganti">
+<input id="tujuan" placeholder="Tujuan: Gresik Kota">
+<input id="harga" placeholder="Harga: 25000">
+<button style="background:#FFD500" onclick="tambahOrder()">📩 KIRIM ORDER PALSU (TES)</button>
+<button style="background:#00e676" onclick="autoOrder()">⚡ AUTO ORDER ACAK (TES 5 DETIK)</button>
+</div>
+
+<h3 style="padding:0 12px">📋 Order Masuk - Gresik</h3>
+<div id="list"><p style="padding:0 12px">Belum ada order. Klik ONLINE dulu.</p></div>
+</div>
+
+<script>
+let online=false, saldo=0;
+let user=localStorage.getItem('vermux_token');
+if(user) showApp();
+function login(){let hp=document.getElementById('hp').value;let otp=document.getElementById('otp').value;if(hp.length<10)return alert('Isi HP dulu');if(otp!=='123456')return alert('OTP Salah!');localStorage.setItem('vermux_token',hp);showApp();}
+function showApp(){document.getElementById('login').style.display='none';document.getElementById('app').style.display='block';document.getElementById('userHp').innerText=localStorage.getItem('vermux_token');tampil();}
+function logout(){localStorage.removeItem('vermux_token');location.reload();}
+function setOnline(v){online=v;document.getElementById('statusTxt').innerText=v?'ONLINE - SIAP NARIK':'OFFLINE';document.getElementById('btnOn').className=v?'on':'off';document.getElementById('btnOff').className=!v?'on':'off';if(v) bunyi('ONLINE!');}
+function bunyi(teks){try{let a=new (window.AudioContext||window.webkitAudioContext)();let o=a.createOscillator();o.frequency.value=880;o.connect(a.destination);o.start();o.stop(a.currentTime+0.3);}catch(e){} if(navigator.vibrate) navigator.vibrate(200);}
+function tambahOrder(){let j=document.getElementById('jemput').value||'Menganti';let t=document.getElementById('tujuan').value||'Gresik Kota';let h=parseInt(document.getElementById('harga').value||'25000');buat(j,t,h);}
+function buat(j,t,h){let o=JSON.parse(localStorage.getItem('v3_orders')||'[]');o.unshift({id:Date.now(),jemput:j,tujuan:t,harga:h,status:'MASUK',jarak:(Math.random()*5+1).toFixed(1)});localStorage.setItem('v3_orders',JSON.stringify(o));let min=parseInt(document.getElementById('minHarga').value);if(online && h>=min){bunyi();alert('🔔 ORDER BARU! '+j+' -> '+t+' Rp '+h);}tampil();}
+function autoOrder(){let data=[['Menganti','Gresik Kota',25000],['Driyorejo','Gresik Kota',30000],['Cerme','Menganti',18000],['Gresik Kota','Lamongan',45000],['Manyar','Gresik Kota',15000],['Kebomas','Gresik Kota',12000]];let i=0;let timer=setInterval(()=>{if(i>=data.length) clearInterval(timer);else{buat(data[i][0],data[i][1],data[i][2]);i++;}},2000);alert('Auto order jalan! Tunggu 2 detik per order.');}
+function terima(id){let o=JSON.parse(localStorage.getItem('v3_orders')||'[]');o=o.map(x=>x.id===id?{...x,status:'TERKUNCI'}:x);localStorage.setItem('v3_orders',JSON.stringify(o));let item=o.find(x=>x.id===id);saldo+=item.harga;localStorage.setItem('v3_saldo',saldo);alert('✅ ORDER TERKUNCI!\n'+item.jemput+' -> '+item.tujuan+'\nPenumpang TIDAK BISA cancel!');tampil();}
+function tolak(id){let o=JSON.parse(localStorage.getItem('v3_orders')||'[]');o=o.filter(x=>x.id!==id);localStorage.setItem('v3_orders',JSON.stringify(o));tampil();}
+function cobaCancel(){alert('⛔ DITOLAK! Order sudah TERKUNCI.\nDriver sudah OTW, penumpang kena denda kalo cancel.');}
+function selesai(id){let o=JSON.parse(localStorage.getItem('v3_orders')||'[]');o=o.filter(x=>x.id!==id);localStorage.setItem('v3_orders',JSON.stringify(o));alert('🎉 Order selesai! Saldo masuk.');tampil();}
+function tampil(){let o=JSON.parse(localStorage.getItem('v3_orders')||'[]');saldo=parseInt(localStorage.getItem('v3_saldo')||'0');document.getElementById('saldo').innerText='Rp '+saldo.toLocaleString('id-ID');document.getElementById('jml').innerText=o.length;let html='';if(!o.length) html='<p style="padding:0 12px">Belum ada order.</p>';o.forEach(x=>{if(x.status==='MASUK'){html+=`<div class="order"><div class="topbar"><span class="badge">BARU • ${x.jarak} km</span><span>🕐 Baru saja</span></div><p><b>📍 ${x.jemput}</b><br>➡️ ${x.tujuan}</p><div class="price">Rp ${x.harga.toLocaleString('id-ID')}</div><button style="background:#00e676" onclick="terima(${x.id})">✅ TERIMA CEPAT - KUNCI</button><button style="background:#eee" onclick="tolak(${x.id})">❌ TOLAK</button></div>`}else{html+=`<div class="order" style="border-left-color:#ff4444"><b>🔒 TERKUNCI - DRIVER OTW</b><p>${x.jemput} → ${x.tujuan}<br><b>Rp ${x.harga.toLocaleString('id-ID')}</b></p><button style="background:#ff4444;color:#fff" onclick="cobaCancel()">COBA CANCEL (PENUMPANG)</button><button style="background:#FFD500" onclick="selesai(${x.id})">🏁 SELESAI ANTAR</button></div>`}});document.getElementById('list').innerHTML=html;}
+</script></body></html>
