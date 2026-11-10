@@ -1,5 +1,5 @@
 const TOKEN = "9234284409:AAEvRLDvjNjuJjE8DW92DZkhx47la20XucU";
-const ADMIN_CHAT_ID = "6285736394243";
+const ADMIN_CHAT_ID = "9073018852";
 const WA_ADMIN = "6285736394243";
 
 async function send(chatId, text, replyMarkup) {
