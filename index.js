@@ -20,6 +20,7 @@ async function getUpdates(offset) {
 
 console.log("VERMUX BOT 24 JAM JALAN!");
 let offset = 0;
+async function main() {
 while (true) {
   try {
     const updates = await getUpdates(offset);
@@ -48,3 +49,5 @@ while (true) {
     }
   } catch (e) { console.log("Error:", e.message); await new Promise(r => setTimeout(r, 3000)); }
 }
+}
+main();
